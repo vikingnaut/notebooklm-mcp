@@ -29,6 +29,10 @@
 
 export const Selectors = {
   chat: {
+    /** One user turn in the chat (used to confirm a question was sent). */
+    userMessage: ".from-user-container",
+    /** Gemini Notebook renders the model's reasoning inside the answer; it is excluded from the returned text. */
+    thinkingChain: "thinking-chain-view",
     answerContainer: ".to-user-container",
     answerText: ".to-user-container .message-text-content",
     latestAnswerText: ".to-user-container:last-child .message-text-content",
@@ -56,6 +60,11 @@ export const Selectors = {
      * anchor on `.submit-button` to avoid distractor matches.
      */
     submitButton: [
+      // Gemini Notebook (2026-11): the class sits on an <nb-icon-button>
+      // wrapper around the real <button>. The source-discovery box has its own
+      // "Submit" (.actions-enter-button), so stay inside the chat query-box.
+      "query-box .submit-button button",
+      "query-box button[aria-label='Submit']",
       "button.submit-button",
       'button.submit-button[aria-label*="send" i]',
       'button.submit-button[aria-label*="senden" i]',
@@ -92,6 +101,17 @@ export const Selectors = {
     ],
     activeTabClass: "mdc-tab--active",
     tabList: ".mat-mdc-tab-list .mdc-tab",
+  },
+
+  /** NotebookLM home page (notebook list), Gemini Notebook layout 2026-11. */
+  home: {
+    card: "project-button",
+    link: "a.primary-action-button",
+    title: ".project-button-title",
+    date: ".project-button-subtitle-part:not(.project-button-subtitle-part-sources)",
+    sources: ".project-button-subtitle-part-sources",
+    icon: ".project-button-box-icon",
+    seeAll: ".see-all-button button",
   },
 
   citations: {
@@ -313,7 +333,7 @@ export const Selectors = {
      * contains the Download item.
      */
     audioMoreMenuButton: [
-      "artifact-library-item button:has(mat-icon:text-is(\"more_vert\"))",
+      'artifact-library-item button:has(mat-icon:text-is("more_vert"))',
       'artifact-library-item button[aria-label*="mehr" i]',
       'artifact-library-item button[aria-label*="more" i]',
       'artifact-library-item button[aria-label*="plus" i]',

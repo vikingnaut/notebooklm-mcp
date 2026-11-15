@@ -1,3 +1,4 @@
+import type { BrowserContext } from "patchright";
 /**
  * Session Manager
  *
@@ -346,5 +347,10 @@ export class SessionManager {
       oldest_session_seconds: oldestSessionSeconds,
       total_messages: totalMessages,
     };
+  }
+
+  /** The shared browser context (created if needed), for page work outside a notebook session. */
+  async getSharedContext(overrideHeadless?: boolean): Promise<BrowserContext> {
+    return this.sharedContextManager.getOrCreateContext(overrideHeadless);
   }
 }

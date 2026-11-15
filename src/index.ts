@@ -66,9 +66,11 @@ sources, ingest sources, generate Audio Overviews).
 
 1. \`get_health\` → if \`authenticated=false\`, run \`setup_auth\` (opens
    a browser tab — user logs in once, cookies persist).
-2. \`add_notebook\` to register a NotebookLM share-URL into the local
-   library (the user must provide the URL — see add_notebook for the link
-   workflow). Optionally \`select_notebook\` to make it the default.
+2. \`list_account_notebooks\` lists every notebook in the signed-in
+   account (title, url, sources); pass a \`url\` straight to
+   \`ask_question\` as \`notebook_url\`. To keep one in the local library,
+   \`add_notebook\` it (a share-URL also works), then optionally
+   \`select_notebook\` to make it the default.
 3. \`ask_question\` — start asking. Save the returned \`session_id\` and
    reuse it for follow-up questions to keep context.
 
@@ -153,7 +155,7 @@ class NotebookLMMCPServer {
     this.server = new Server(
       {
         name: "notebooklm-mcp",
-        version: "2.0.0",
+        version: "2.1.0",
       },
       {
         capabilities: {
@@ -191,7 +193,7 @@ class NotebookLMMCPServer {
 
     const activeSettings = this.settingsManager.getEffectiveSettings();
     log.info("🚀 NotebookLM MCP Server initialized");
-    log.info(`  Version: 2.0.0`);
+    log.info(`  Version: 2.1.0`);
     log.info(`  Node: ${process.version}`);
     log.info(`  Platform: ${process.platform}`);
     log.info(`  Profile: ${activeSettings.profile} (${this.toolDefinitions.length} tools active)`);
@@ -267,6 +269,12 @@ class NotebookLMMCPServer {
                 use_cases?: string[];
                 tags?: string[];
               }
+            );
+            break;
+
+          case "list_account_notebooks":
+            result = await this.toolHandlers.handleListAccountNotebooks(
+              args as { query?: string; show_browser?: boolean }
             );
             break;
 
@@ -623,7 +631,7 @@ async function main() {
   // Print banner
   console.error("╔══════════════════════════════════════════════════════════╗");
   console.error("║                                                          ║");
-  console.error("║           NotebookLM MCP Server v2.0.0                   ║");
+  console.error("║           NotebookLM MCP Server v2.1.0                   ║");
   console.error("║                                                          ║");
   console.error("║   Chat with Gemini 2.5 through NotebookLM via MCP       ║");
   console.error("║                                                          ║");

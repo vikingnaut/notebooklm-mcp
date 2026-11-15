@@ -16,7 +16,7 @@
  */
 
 import type { Page } from "patchright";
-import { Selectors } from "./selectors.js";
+import { Selectors, joinAlt } from "./selectors.js";
 import { isRecoverable, pageIsAlive, safeSleep } from "../browser/watchdog.js";
 
 /**
@@ -304,20 +304,94 @@ export async function waitForStableAnswer(
 }
 
 /**
- * Read the latest answer container's text and strip UI-control leakage.
- * Uses `:last-child` so we always target the most recent turn.
+ * Read the answer to the most recent question.
+ *
+ * Only returns text when the last chat turn is an answer, so a prior answer
+ * is never mistaken for the new one while Gemini is still thinking. The
+ * reasoning block ("Thoughts") is left out.
  */
 async function readLatestAnswer(page: Page): Promise<string | null> {
   try {
-    const raw = await page
-      .locator(Selectors.chat.latestAnswerText)
-      .last()
-      .innerText({ timeout: 2_000 });
+    const raw = await page.evaluate(
+      ({ user, answer, text, thinking }) => {
+        const turns = document.querySelectorAll(`${user}, ${answer}`);
+        const last = turns[turns.length - 1];
+        if (!last || !last.matches(answer)) return null;
+        const msg = last.querySelector<HTMLElement>(text);
+        if (!msg) return null;
+        const think = msg.querySelector(thinking);
+        if (!think?.parentElement) return msg.innerText;
+        return Array.from(think.parentElement.children)
+          .filter((c) => c !== think)
+          .map((c) => (c as HTMLElement).innerText)
+          .join("\n");
+      },
+      {
+        user: Selectors.chat.userMessage,
+        answer: Selectors.chat.answerContainer,
+        text: ".message-text-content",
+        thinking: Selectors.chat.thinkingChain,
+      }
+    );
+    if (!raw) return null;
     const cleaned = sanitizeAnswer(raw);
     return cleaned.length > 0 ? cleaned : null;
   } catch {
     return null;
   }
+}
+
+/** Number of user turns currently in the chat. */
+export async function countUserTurns(page: Page): Promise<number> {
+  return page
+    .locator(Selectors.chat.userMessage)
+    .count()
+    .catch(() => 0);
+}
+
+/**
+ * Send the typed question and confirm it reached the chat.
+ *
+ * Clicks the chat Submit button, falling back to Enter. The chat box has a
+ * suggestions dropdown that can swallow Enter, so success is confirmed by a
+ * new user turn appearing; without that the caller would wait for an answer
+ * to a question that was never sent.
+ */
+export async function submitQuestion(
+  page: Page,
+  question: string,
+  userTurnsBefore: number
+): Promise<void> {
+  // Match on the start of the question: chat history can finish loading late
+  // and raise the turn count without our question being sent.
+  const head = question.trim().replace(/\s+/g, " ").slice(0, 40).toLowerCase();
+  const sent = () =>
+    page
+      .waitForFunction(
+        ({ sel, n, head }) => {
+          const turns = document.querySelectorAll<HTMLElement>(sel);
+          const last = turns[turns.length - 1];
+          return (
+            turns.length > n &&
+            !!last &&
+            last.innerText.replace(/\s+/g, " ").toLowerCase().includes(head)
+          );
+        },
+        { sel: Selectors.chat.userMessage, n: userTurnsBefore, head },
+        { timeout: 8_000 }
+      )
+      .then(() => true)
+      .catch(() => false);
+
+  const button = page.locator(joinAlt(Selectors.chat.submitButton)).first();
+  if (await button.isEnabled({ timeout: 2_000 }).catch(() => false)) {
+    await button.click().catch(() => undefined);
+    if (await sent()) return;
+  }
+  await page.keyboard.press("Escape").catch(() => undefined); // close the suggestions dropdown
+  await page.keyboard.press("Enter");
+  if (await sent()) return;
+  throw new Error("Question was not sent: no new message appeared in the NotebookLM chat");
 }
 
 /**
@@ -332,22 +406,21 @@ export function sanitizeAnswer(text: string): string {
     .split("\n")
     .map((line) => line.trim());
 
+  // Citation markers render as their own lines ("…fat", "1", "."). Fold a
+  // lone number back onto the previous line as "[1]" (the form the citation
+  // formatter looks for), and a lone punctuation mark with it.
   const kept: string[] = [];
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (!line) continue;
-
-    if (Selectors.uiControlLabels.has(line)) continue;
-
-    // Drop lone digits or punctuation flanking a UI-control label
-    // (typical citation-marker leak: ["1", "more_vert"]).
-    const next = lines[i + 1] ?? "";
-    const prev = lines[i - 1] ?? "";
-    const nextIsControl = Selectors.uiControlLabels.has(next);
-    const prevIsControl = Selectors.uiControlLabels.has(prev);
-    if (/^\d+$/.test(line) && nextIsControl) continue;
-    if (/^[.,;:!?]+$/.test(line) && (nextIsControl || prevIsControl)) continue;
-
+  for (const line of lines) {
+    if (!line || Selectors.uiControlLabels.has(line)) continue;
+    const last = kept.length - 1;
+    if (last >= 0 && /^\d{1,3}$/.test(line)) {
+      kept[last] += ` [${line}]`;
+      continue;
+    }
+    if (last >= 0 && /^[.,;:!?]+$/.test(line)) {
+      kept[last] += line;
+      continue;
+    }
     kept.push(line);
   }
 

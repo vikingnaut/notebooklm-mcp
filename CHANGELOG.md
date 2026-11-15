@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-11-15 (fork: vikingnaut/notebooklm-mcp)
+
+Upstream is archived. This fork keeps the server working with Google's move
+from notebooklm.google.com to notebook.google.com ("Gemini Notebook").
+
+### Added
+
+- **`list_account_notebooks` tool**: lists every notebook in the signed-in
+  account from the home page (title, url, date, source count, emoji), so a
+  notebook can be queried by title without collecting a share link first.
+  Included in the `minimal` and `standard` profiles.
+- On a notebook page that never shows the chat box, the error now names the
+  URL and page title and saves a full-page screenshot to the temp folder.
+- `npm run test:unit` (host check and answer clean-up) and
+  `scripts/probe-ask.mjs`, a harness that calls one tool over stdio with the
+  server's logs visible.
+
+### Fixed
+
+- Login detection, the interface checks and notebook URLs accept both
+  notebooklm.google.com and notebook.google.com (one hostname check,
+  `isNotebookLmUrl`). Before, `setup_auth` never finished for moved accounts.
+- Questions are sent with the chat Submit button (its class moved to a
+  wrapper element) and confirmed by the question appearing in the chat; Enter
+  is the fallback. Before, the suggestions dropdown could swallow Enter and
+  `ask_question` waited ten minutes for an answer to a question never sent.
+- The answer is read only when the last chat turn is an answer, and the
+  "Thoughts" reasoning block is left out.
+- Citation markers that render on their own lines are folded back as `[n]`,
+  so `inline` citations work and sentences are no longer split.
+- The chat-input wait covers every known selector, for up to 30 s.
+
+### Known issue
+
+- When the base Chrome profile is in use (for example a second MCP client),
+  the server copies saved cookies into a temporary profile. In testing this
+  coincided with Google signing the account out; run one client at a time.
+
 ## [2.0.0] - 2026-04-30
 
 Major release that closes the issue backlog and replaces the brittle parts of

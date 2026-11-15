@@ -79,6 +79,34 @@ export const notebookManagementTools: Tool[] = [
     },
   },
   {
+    name: "list_account_notebooks",
+    description:
+      "List every notebook in the signed-in Google account, read live from " +
+      "the NotebookLM home page: `title`, `url`, `date`, `sources` (count) and " +
+      "`emoji`. No share link needed: pass a returned `url` straight to " +
+      "`ask_question` / `add_source` / audio tools as `notebook_url`, or to " +
+      "`add_notebook` to keep it in the local library. Use this when the user " +
+      "names a notebook by title. Takes a few seconds (opens the home page).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description: "Only return notebooks whose title contains this text (case-insensitive).",
+        },
+        show_browser: {
+          type: "boolean",
+          description: "Show the browser window (debugging). Default: false.",
+        },
+      },
+    },
+    annotations: {
+      title: "List account notebooks",
+      readOnlyHint: true,
+      openWorldHint: true,
+    },
+  },
+  {
     name: "list_notebooks",
     description:
       "List every notebook in the local library with its metadata " +
@@ -126,9 +154,9 @@ export const notebookManagementTools: Tool[] = [
       "caller omits `notebook_id` / `notebook_url`.\n\n" +
       "When to call:\n" +
       "  • The user explicitly switches context (e.g. \"Let's work on " +
-      "React now\")\n" +
+      'React now")\n' +
       "  • Task obviously needs a different notebook than the current one — " +
-      "announce the switch (\"Switching to the React notebook…\") before " +
+      'announce the switch ("Switching to the React notebook…") before ' +
       "calling.\n" +
       "  • If the right notebook is ambiguous, ask the user first instead " +
       "of guessing.",
@@ -235,8 +263,8 @@ export const notebookManagementTools: Tool[] = [
       "Search the library by free-text query — matches against `name`, " +
       "`description`, `topics`, and `tags`. Returns notebook objects with " +
       "their `id` so you can chain into `select_notebook` etc.\n\n" +
-      "Use this when the user references a notebook by topic (\"the React " +
-      "one\") instead of by exact name. If multiple notebooks match, " +
+      'Use this when the user references a notebook by topic ("the React ' +
+      'one") instead of by exact name. If multiple notebooks match, ' +
       "propose the top 1–2 and let the user choose.",
     inputSchema: {
       type: "object",
@@ -260,7 +288,7 @@ export const notebookManagementTools: Tool[] = [
       "Aggregate statistics about the local notebook library: " +
       "`total_notebooks`, `active_notebook` (id), `most_used_notebook`, " +
       "`total_queries`, `last_modified`. Useful as a quick health check or " +
-      "when the user asks \"what notebooks do I have?\".",
+      'when the user asks "what notebooks do I have?".',
     inputSchema: {
       type: "object",
       properties: {},

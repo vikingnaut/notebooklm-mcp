@@ -1,6 +1,9 @@
 > [!WARNING]
 > **This project is no longer maintained.** As of September 2026 the repository is archived: no updates, bug fixes or support. The npm package will not receive further releases. It may stop working when the upstream services change. Feel free to fork.
 
+> [!NOTE]
+> **Maintained fork** ([vikingnaut/notebooklm-mcp](https://github.com/vikingnaut/notebooklm-mcp)): works with notebook.google.com ("Gemini Notebook") and adds `list_account_notebooks`. See [CHANGELOG](./CHANGELOG.md) 2.1.0. Install from source: `git clone`, `npm ci && npm run build`, then `claude mcp add -s user notebooklm -- node <path>/dist/index.js`.
+
 # NotebookLM MCP Server
 
 [![npm](https://img.shields.io/npm/v/notebooklm-mcp.svg)](https://www.npmjs.com/package/notebooklm-mcp)

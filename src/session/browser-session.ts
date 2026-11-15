@@ -13,12 +13,19 @@
  * Based on the Python implementation from browser_session.py
  */
 
+import os from "node:os";
+import path from "node:path";
 import type { BrowserContext, Page } from "patchright";
 import type { SharedContextManager } from "./shared-context-manager.js";
 import type { AuthManager } from "../auth/auth-manager.js";
 import { humanType, randomDelay } from "../utils/stealth-utils.js";
 import { snapshotAllResponses } from "../utils/page-utils.js";
-import { waitForStableAnswer, snapshotPriorAnswers } from "../notebooklm/chat.js";
+import {
+  waitForStableAnswer,
+  snapshotPriorAnswers,
+  countUserTurns,
+  submitQuestion,
+} from "../notebooklm/chat.js";
 import {
   extractCitations as extractCitationsFromPage,
   type SourceFormat,
@@ -38,6 +45,7 @@ import {
   type DownloadAudioResult,
 } from "../notebooklm/audio.js";
 import { CONFIG } from "../config.js";
+import { Selectors, joinAlt } from "../notebooklm/selectors.js";
 import { log } from "../utils/logger.js";
 import type { SessionInfo, ProgressCallback } from "../types.js";
 import { RateLimitError } from "../errors.js";
@@ -174,31 +182,24 @@ export class BrowserSession {
       throw new Error("Page not initialized");
     }
 
+    const page = this.page;
+    const inputs = joinAlt(Selectors.chat.queryInput);
+    log.info("  ⏳ Waiting for chat input...");
     try {
-      // PRIMARY: Exact Python selector - textarea.query-box-input
-      log.info("  ⏳ Waiting for chat input (textarea.query-box-input)...");
-      await this.page.waitForSelector("textarea.query-box-input", {
-        timeout: 10000, // Python uses 10s timeout
-        state: "visible", // ONLY check visibility (NO disabled check!)
-      });
+      // One wait over every known chat-input selector. Gemini Notebook can
+      // take longer than the old 10 s on a fresh profile.
+      await page.waitForSelector(inputs, { timeout: 30_000, state: "visible" });
       log.success("  ✅ Chat input ready!");
-    } catch {
-      // FALLBACK: Python alternative selector
-      try {
-        log.info("  ⏳ Trying fallback selector (aria-label)...");
-        await this.page.waitForSelector('textarea[aria-label="Feld für Anfragen"]', {
-          timeout: 5000, // Python uses 5s for fallback
-          state: "visible",
-        });
-        log.success("  ✅ Chat input ready (fallback)!");
-      } catch (error) {
-        log.error(`  ❌ NotebookLM interface not ready: ${error}`);
-        throw new Error(
-          "Could not find NotebookLM chat input. " +
-            "Please ensure the notebook page has loaded correctly.",
-          { cause: error }
-        );
-      }
+    } catch (error) {
+      // Save what the page showed, so a layout change or an interstitial
+      // (consent, onboarding, error page) can be diagnosed without guessing.
+      const shot = path.join(os.tmpdir(), `notebooklm-mcp-not-ready-${Date.now()}.png`);
+      await page.screenshot({ path: shot, fullPage: true }).catch(() => undefined);
+      const where = `${page.url()} ("${await page.title().catch(() => "")}")`;
+      log.error(`  ❌ NotebookLM interface not ready at ${where}; screenshot: ${shot}`);
+      throw new Error(`Could not find the NotebookLM chat input at ${where}. Screenshot: ${shot}`, {
+        cause: error,
+      });
     }
   }
 
@@ -391,6 +392,8 @@ export class BrowserSession {
       }
       log.success(`  ✅ Captured ${existingResponses.length} existing responses`);
 
+      const userTurnsBefore = await countUserTurns(page);
+
       // Find the chat input
       const inputSelector = await this.findChatInput();
       if (!inputSelector) {
@@ -410,10 +413,10 @@ export class BrowserSession {
       // Small pause before submitting
       await randomDelay(500, 1000);
 
-      // Submit the question (Enter key)
+      // Submit and confirm the question reached the chat
       log.info(`  📤 Submitting question...`);
       await sendProgress?.("Submitting question...", 3, 5);
-      await page.keyboard.press("Enter");
+      await submitQuestion(page, question, userTurnsBefore);
 
       // Small pause after submit
       await randomDelay(1000, 1500);

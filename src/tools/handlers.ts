@@ -5,6 +5,7 @@
  */
 
 import type { SessionManager } from "../session/session-manager.js";
+import { listAccountNotebooks, type AccountNotebook } from "../notebooklm/account.js";
 import type { AuthManager } from "../auth/auth-manager.js";
 import type { NotebookLibrary } from "../library/notebook-library.js";
 import type {
@@ -956,6 +957,28 @@ export class ToolHandlers {
   }
 
   /**
+   * Handle list_account_notebooks: every notebook in the signed-in account,
+   * read from the NotebookLM home page.
+   */
+  async handleListAccountNotebooks(args: {
+    query?: string;
+    show_browser?: boolean;
+  }): Promise<ToolResult<{ notebooks: AccountNotebook[]; count: number }>> {
+    log.info(`🔧 [TOOL] list_account_notebooks called`);
+    try {
+      const context = await this.sessionManager.getSharedContext(args.show_browser);
+      let notebooks = await listAccountNotebooks(context, this.authManager);
+      const q = args.query?.trim().toLowerCase();
+      if (q) notebooks = notebooks.filter((n) => n.title.toLowerCase().includes(q));
+      return { success: true, data: { notebooks, count: notebooks.length } };
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      log.error(`❌ [TOOL] list_account_notebooks failed: ${msg}`);
+      return { success: false, error: msg };
+    }
+  }
+
+  /**
    * Handle add_source tool (issue #25).
    */
   async handleAddSource(args: {
@@ -1029,9 +1052,7 @@ export class ToolHandlers {
       // `started` and `in_progress` count as success — the generation is on
       // its way; the caller polls `get_audio_status` for completion.
       const ok =
-        result.status === "ready" ||
-        result.status === "started" ||
-        result.status === "in_progress";
+        result.status === "ready" || result.status === "started" || result.status === "in_progress";
       return { success: ok, data: { result } };
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
