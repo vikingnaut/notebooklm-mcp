@@ -144,7 +144,7 @@ export const askQuestionTool: Tool = {
         description:
           "Direct NotebookLM URL — overrides `notebook_id`. Use for ad-hoc " +
           "queries against notebooks not yet in your library. Format: " +
-          "`https://notebooklm.google.com/notebook/<uuid>`.",
+          "`https://notebooklm.google.com/notebook/<uuid>` or `https://notebook.google.com/notebook/<uuid>`.",
       },
       source_format: {
         type: "string",

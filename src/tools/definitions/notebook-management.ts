@@ -34,7 +34,7 @@ export const notebookManagementTools: Tool[] = [
           type: "string",
           description:
             "NotebookLM share URL. Format: " +
-            "`https://notebooklm.google.com/notebook/<uuid>` (with optional " +
+            "`https://notebooklm.google.com/notebook/<uuid>` or `https://notebook.google.com/notebook/<uuid>` (with optional " +
             "`?authuser=N` suffix).",
         },
         name: {

@@ -1,7 +1,7 @@
 {
   "name": "notebooklm-mcp",
   "version": "2.0.0",
-  "description": "MCP server for Google NotebookLM — chat, source ingestion, audio overviews, citations, stdio + Streamable-HTTP transports.",
+  "description": "MCP server for Google NotebookLM \u2014 chat, source ingestion, audio overviews, citations, stdio + Streamable-HTTP transports.",
   "type": "module",
   "bin": {
     "notebooklm-mcp": "dist/index.js"
@@ -17,7 +17,8 @@
     "lint:fix": "eslint src --fix",
     "format": "prettier --write src",
     "format:check": "prettier --check src",
-    "check": "npm run format:check && npm run lint && npm run build"
+    "check": "npm run format:check && npm run lint && npm run build",
+    "test:hosts": "node test/hosts.mjs"
   },
   "keywords": [
     "mcp",
@@ -26,7 +27,7 @@
     "ai",
     "claude"
   ],
-  "author": "Gérôme Dexheimer <hello@geromedexheimer.de> (https://github.com/PleasePrompto)",
+  "author": "G\u00e9r\u00f4me Dexheimer <hello@geromedexheimer.de> (https://github.com/PleasePrompto)",
   "license": "MIT",
   "repository": {
     "type": "git",
